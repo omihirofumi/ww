@@ -14,10 +14,38 @@ pub fn main() !void {
     defer _ = gpa_state.deinit();
     const allocator = gpa_state.allocator();
 
-    const root = try jjRoot(allocator);
-    defer allocator.free(root);
-    try stdout.print("{s}", .{root});
-    try stdout.flush();
+    var args = std.process.args();
+    _ = args.next();
+
+    const subcommand = args.next() orelse {
+        try printUsage();
+        return;
+    };
+
+    if (std.mem.eql(u8, subcommand, "new")) {
+        const name = args.next() orelse {
+            try printUsage();
+            return;
+        };
+
+        const repo_root = try jjRoot(allocator);
+        defer allocator.free(repo_root);
+
+        const repo_name = std.fs.path.basename(repo_root);
+        const home = std.posix.getenv("HOME") orelse return error.MissingHome;
+
+        const target_path = try std.fs.path.join(allocator, &.{
+            home,
+            ".jj-workspace",
+            repo_name,
+            name,
+        });
+        defer allocator.free(target_path);
+
+        try runJjWorkspaceAdd(allocator, target_path);
+        return;
+    }
+    try printUsage();
 }
 
 fn printUsage() !void {
@@ -50,4 +78,18 @@ fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
     const trimmed = std.mem.trimEnd(u8, out, "\r\n");
 
     return try allocator.dupe(u8, trimmed);
+}
+
+fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8) !void {
+    var child = std.process.Child.init(&.{ "jj", "workspace", "add", path }, allocator);
+    child.stdin_behavior = .Inherit;
+    child.stdout_behavior = .Inherit;
+    child.stderr_behavior = .Inherit;
+
+    try child.spawn();
+    const term = try child.wait();
+    switch (term) {
+        .Exited => |code| if (code != 0) return error.runJjWorkspaceAddFailed,
+        else => return error.runJjWorkspaceAddFailed,
+    }
 }
