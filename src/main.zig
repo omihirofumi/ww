@@ -17,6 +17,7 @@ pub fn main() !void {
     const root = try jjRoot(allocator);
     defer allocator.free(root);
     try stdout.print("{s}", .{root});
+    try stdout.flush();
 }
 
 fn printUsage() !void {
@@ -37,10 +38,8 @@ fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
     var file_reader = stdout_file.reader(&io_buf);
     const r = &file_reader.interface;
 
-    var out = try std.ArrayList(u8).initCapacity(allocator, 100);
-    defer out.deinit(allocator);
-
-    try r.appendRemaining(allocator, &out, .unlimited);
+    const out = try r.allocRemaining(allocator, .unlimited);
+    defer allocator.free(out);
 
     const term = try child.wait();
     switch (term) {
@@ -48,7 +47,7 @@ fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
         else => return error.JjRootFailed,
     }
 
-    const trimmed = std.mem.trimEnd(u8, out.items, "\r\n");
+    const trimmed = std.mem.trimEnd(u8, out, "\r\n");
 
     return try allocator.dupe(u8, trimmed);
 }
