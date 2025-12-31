@@ -2,6 +2,7 @@ const std = @import("std");
 
 const Command = union(enum) {
     new: []const u8,
+    go: []const u8,
 };
 
 pub const App = struct {
@@ -16,10 +17,10 @@ pub const App = struct {
             return .{ .new = name };
         }
 
-        // if (std.mem.eql(u8, subcommand, "go")) {
-        //     const name = args.next() orelse return error.InvalidArgs;
-        //     return .{ .go = name };
-        // }
+        if (std.mem.eql(u8, subcommand, "go")) {
+            const name = args.next() orelse return error.InvalidArgs;
+            return .{ .go = name };
+        }
 
         return error.InvalidArgs;
     }
@@ -27,6 +28,7 @@ pub const App = struct {
     pub fn run(self: App, cmd: Command) !void {
         switch (cmd) {
             .new => |name| try self.runNew(name),
+            .go => |name| try self.runGo(name),
         }
     }
 
@@ -38,6 +40,20 @@ pub const App = struct {
         defer self.allocator.free(workspacePath);
 
         try runJjWorkspaceAdd(self.allocator, workspacePath);
+    }
+
+    fn runGo(self: App, name: []const u8) !void {
+        const repo_root = try jjRoot(self.allocator);
+        defer self.allocator.free(repo_root);
+
+        const workspacePath = try buildWorkspacePath(self.allocator, repo_root, name);
+        defer self.allocator.free(workspacePath);
+
+        var out_buf: [1024]u8 = undefined;
+        var out_writer = std.fs.File.stdout().writer(&out_buf);
+        const stdout = &out_writer.interface;
+        try stdout.print("{s}\n", .{workspacePath});
+        try stdout.flush();
     }
 };
 

@@ -1,10 +1,6 @@
 const std = @import("std");
 const ww = @import("ww.zig");
 
-var writer_buf: [1024]u8 = undefined;
-var stdout_writer = std.fs.File.stdout().writer(&writer_buf);
-const stdout = &stdout_writer.interface;
-
 var error_buf: [1024]u8 = undefined;
 var stderr_writer = std.fs.File.stderr().writer(&error_buf);
 const stderr = &stderr_writer.interface;
@@ -28,6 +24,6 @@ pub fn main() !void {
 }
 
 fn printUsage() !void {
-    try stderr.print("usage: ww new <name>\n", .{});
+    try stderr.print("usage: ww new/go <name>\n", .{});
     try stderr.flush();
 }
