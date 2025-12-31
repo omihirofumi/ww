@@ -12,11 +12,19 @@ const stderr = &stderr_writer.interface;
 pub fn main() !void {
     var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa_state.deinit();
-    const allocator = gpa_state.allocator();
+    // const allocator = gpa_state.allocator();
+    try stdout.print("hello", .{});
+    try stdout.flush();
 
-    const root = try jjRoot(allocator);
-    defer allocator.free(root);
-    try stdout.print("{s}", .{root});
+    var list = try std.ArrayList(u8).initCapacity(gpa_state.allocator(), 100);
+    defer list.deinit(gpa_state.allocator());
+    try list.append(gpa_state.allocator(), 1);
+    try stdout.print("{any}\n", .{list.items});
+    try stdout.flush();
+
+    // const root = try jjRoot(allocator);
+    // defer allocator.free(root);
+    // try stdout.print("{s}", .{root});
 }
 
 fn printUsage() !void {
