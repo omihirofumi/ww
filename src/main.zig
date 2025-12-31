@@ -10,15 +10,45 @@ var stderr_writer = std.fs.File.stderr().writer(&error_buf);
 const stderr = &stderr_writer.interface;
 
 pub fn main() !void {
-    // read args
-    var args_iter = std.process.args();
-    if (args_iter.inner.count != 3) {
-        try stderr.print("usage: ", .{});
-        try stderr.flush();
-        return;
+    var gpa_state = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa_state.deinit();
+    const allocator = gpa_state.allocator();
+
+    const root = try jjRoot(allocator);
+    defer allocator.free(root);
+    try stdout.print("{s}", .{root});
+}
+
+fn printUsage() !void {
+    try stderr.print("usage: ww new <name>\n", .{});
+    try stderr.flush();
+}
+
+fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
+    var child = std.process.Child.init(&.{ "jj", "root" }, allocator);
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Inherit;
+
+    try child.spawn();
+
+    const stdout_file = child.stdout orelse return error.NoStdout;
+
+    var io_buf: [1024]u8 = undefined;
+    var file_reader = stdout_file.reader(&io_buf);
+    const r = &file_reader.interface;
+
+    var out = try std.ArrayList(u8).initCapacity(allocator, 100);
+    defer out.deinit(allocator);
+
+    try r.appendRemaining(allocator, &out, .unlimited);
+
+    const term = try child.wait();
+    switch (term) {
+        .Exited => |code| if (code != 0) return error.JjRootFailed,
+        else => return error.JjRootFailed,
     }
-    while (args_iter.next()) |val| {
-        try stdout.print("args: {s}", .{val});
-    }
-    try stdout.flush();
+
+    const trimmed = std.mem.trimEnd(u8, out.items, "\r\n");
+
+    return try allocator.dupe(u8, trimmed);
 }
