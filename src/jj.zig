@@ -79,8 +79,10 @@ pub fn listWorkspaces(allocator: std.mem.Allocator) ![]const []const u8 {
     var trimmed = std.mem.splitSequence(u8, out, "\n");
     var workspace_list = try std.ArrayList([]const u8).initCapacity(allocator, 100);
     while (trimmed.next()) |val| {
-        var workspace_name_line = std.mem.splitScalar(u8, val, ':');
-        const workspace_name = workspace_name_line.first();
+        const line = std.mem.trimEnd(u8, val, "\r");
+        if (line.len == 0) continue;
+        var workspace_name_line = std.mem.splitScalar(u8, line, ':');
+        const workspace_name = try allocator.dupe(u8, workspace_name_line.first());
         try workspace_list.append(allocator, workspace_name);
     }
 
