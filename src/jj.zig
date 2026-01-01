@@ -53,3 +53,36 @@ pub fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8) !void {
     }
 }
 
+pub fn listWorkspaces(allocator: std.mem.Allocator) ![]const []const u8 {
+    var child = std.process.Child.init(&.{ "jj", "workspace", "list" }, allocator);
+    child.stdin_behavior = .Inherit;
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Inherit;
+
+    try child.spawn();
+
+    const stdout_file = child.stdout orelse return error.NoStdout;
+
+    var io_buf: [1024]u8 = undefined;
+    var file_reader = stdout_file.reader(&io_buf);
+    const r = &file_reader.interface;
+
+    const out = try r.allocRemaining(allocator, .unlimited);
+    defer allocator.free(out);
+
+    const term = try child.wait();
+    switch (term) {
+        .Exited => |code| if (code != 0) return error.JjRootFailed,
+        else => return error.JjRootFailed,
+    }
+
+    var trimmed = std.mem.splitSequence(u8, out, "\n");
+    var workspace_list = try std.ArrayList([]const u8).initCapacity(allocator, 100);
+    while (trimmed.next()) |val| {
+        var workspace_name_line = std.mem.splitScalar(u8, val, ':');
+        const workspace_name = workspace_name_line.first();
+        try workspace_list.append(allocator, workspace_name);
+    }
+
+    return workspace_list.toOwnedSlice(allocator);
+}
