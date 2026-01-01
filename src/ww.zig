@@ -71,13 +71,13 @@ pub const App = struct {
         const repo_root = try jj.jjRoot(self.allocator);
         defer self.allocator.free(repo_root);
 
-        const workspacePath = try jj.buildWorkspacePath(self.allocator, repo_root, name);
-        defer self.allocator.free(workspacePath);
+        const workspace_path = try jj.buildWorkspacePath(self.allocator, repo_root, name);
+        defer self.allocator.free(workspace_path);
 
         var out_buf: [1024]u8 = undefined;
         var out_writer = std.fs.File.stdout().writer(&out_buf);
         const stdout = &out_writer.interface;
-        try stdout.print("{s}\n", .{workspacePath});
+        try stdout.print("{s}\n", .{workspace_path});
         try stdout.flush();
     }
 };

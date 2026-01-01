@@ -48,8 +48,8 @@ pub fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8) !void {
     try child.spawn();
     const term = try child.wait();
     switch (term) {
-        .Exited => |code| if (code != 0) return error.runJjWorkspaceAddFailed,
-        else => return error.runJjWorkspaceAddFailed,
+        .Exited => |code| if (code != 0) return error.RunJjWorkspaceAddFailed,
+        else => return error.RunJjWorkspaceAddFailed,
     }
 }
 
