@@ -34,7 +34,21 @@ pub fn parse(self: App, args: *std.process.ArgIterator) !Command {
 pub fn run(self: App, cmd: Command) !void {
     switch (cmd) {
         .new => |name| try self.runNew(name),
-        .go => |name| try self.runGo(name),
+        .go => |name| {
+            self.runGo(name) catch |err| {
+                switch (err) {
+                    error.WorkspaceNotFound => {
+                        try stderr.print("workspace not found: {s}\n", .{name});
+                        try stderr.flush();
+                    },
+                    // TODO: handling errors
+                    else => {
+                        try stderr.print("something happened", .{});
+                        try stderr.flush();
+                    },
+                }
+            };
+        },
     }
 }
 
