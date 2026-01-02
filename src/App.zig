@@ -11,6 +11,7 @@ const Command = union(enum) {
     new: []const u8,
     go: []const u8,
     init_shell: []const u8,
+    list: void,
 };
 
 const Shell = enum { zsh };
@@ -36,6 +37,10 @@ pub fn parse(self: App, args: *std.process.ArgIterator) !Command {
         if (!std.mem.eql(u8, shell, "zsh")) return error.ZshOnlySupported;
         return .{ .init_shell = shell };
     }
+
+    if (std.mem.eql(u8, subcommand, "list")) {
+        return .{ .list = {} };
+    }
     return error.InvalidArgs;
 }
 
@@ -60,6 +65,9 @@ pub fn run(self: App, cmd: Command) !void {
         .init_shell => |shell| {
             const tag = std.meta.stringToEnum(Shell, shell) orelse return error.InvalidArgs;
             try self.runInitShell(tag);
+        },
+        .list => {
+            try self.runList();
         },
     }
 }
@@ -115,6 +123,25 @@ fn runInitShell(self: App, shell: Shell) !void {
             try stdout.flush();
         },
     }
+}
+
+fn runList(self: App) !void {
+    var out_buf: [1024]u8 = undefined;
+    var out_writer = std.fs.File.stdout().writer(&out_buf);
+    const stdout = &out_writer.interface;
+
+    const workspace_list = try jj.listWorkspaces(self.allocator);
+    defer {
+        for (workspace_list) |workspace| {
+            self.allocator.free(workspace);
+        }
+        self.allocator.free(workspace_list);
+    }
+
+    for (workspace_list) |workspace| {
+        try stdout.print("{s}\n", .{workspace});
+    }
+    try stdout.flush();
 }
 
 fn existsWorkspace(allocator: std.mem.Allocator, name: []const u8) !bool {
