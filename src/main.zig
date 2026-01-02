@@ -1,5 +1,5 @@
 const std = @import("std");
-const ww = @import("ww.zig");
+const App = @import("App.zig");
 
 var error_buf: [1024]u8 = undefined;
 var stderr_writer = std.fs.File.stderr().writer(&error_buf);
@@ -13,7 +13,7 @@ pub fn main() !void {
     var args = std.process.args();
     _ = args.next();
 
-    var app = ww.App{ .allocator = allocator };
+    var app = App{ .allocator = allocator };
 
     const cmd = app.parse(&args) catch {
         try printUsage();

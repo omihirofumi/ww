@@ -1,3 +1,5 @@
+const Command = @This();
+
 const std = @import("std");
 const jj = @import("jj.zig");
 
