@@ -76,7 +76,7 @@ fn runGo(self: App, name: []const u8) !void {
     var out_buf: [1024]u8 = undefined;
     var out_writer = std.fs.File.stdout().writer(&out_buf);
     const stdout = &out_writer.interface;
-    try stdout.print("{s}\n", .{workspace_path});
+    try stdout.print("cd {s}\n", .{workspace_path});
     try stdout.flush();
 }
 
