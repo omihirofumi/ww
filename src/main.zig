@@ -24,6 +24,12 @@ pub fn main() !void {
 }
 
 fn printUsage() !void {
-    try stderr.print("usage: ww new/go <name>\n", .{});
+    try stderr.print(
+        "usage:\n" ++
+            "  ww new <name>\n" ++
+            "  ww go <name>\n" ++
+            "  ww init zsh\n",
+        .{},
+    );
     try stderr.flush();
 }
