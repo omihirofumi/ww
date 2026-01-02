@@ -49,23 +49,7 @@ fn runNew(self: App, name: []const u8) !void {
 }
 
 fn runGo(self: App, name: []const u8) !void {
-    const workspace_list = try jj.listWorkspaces(self.allocator);
-    defer {
-        for (workspace_list) |workspace| {
-            self.allocator.free(workspace);
-        }
-        self.allocator.free(workspace_list);
-    }
-    var workspace_exists = false;
-    for (workspace_list) |workspace| {
-        if (std.mem.eql(u8, workspace, name)) {
-            workspace_exists = true;
-            break;
-        }
-    }
-    if (!workspace_exists) {
-        try stderr.print("{s} does not exist.\n", .{name});
-        try stderr.flush();
+    if (!(try existsWorkspace(self.allocator, name))) {
         return error.WorkspaceNotFound;
     }
 
@@ -80,4 +64,20 @@ fn runGo(self: App, name: []const u8) !void {
     const stdout = &out_writer.interface;
     try stdout.print("{s}\n", .{workspace_path});
     try stdout.flush();
+}
+
+fn existsWorkspace(allocator: std.mem.Allocator, name: []const u8) !bool {
+    const workspace_list = try jj.listWorkspaces(allocator);
+    defer {
+        for (workspace_list) |workspace| {
+            allocator.free(workspace);
+        }
+        allocator.free(workspace_list);
+    }
+    for (workspace_list) |workspace| {
+        if (std.mem.eql(u8, workspace, name)) {
+            return true;
+        }
+    }
+    return false;
 }
