@@ -10,7 +10,10 @@ const stderr = &stderr_writer.interface;
 const Command = union(enum) {
     new: []const u8,
     go: []const u8,
+    init_shell: []const u8,
 };
+
+const Shell = enum { zsh };
 
 allocator: std.mem.Allocator,
 
@@ -28,6 +31,11 @@ pub fn parse(self: App, args: *std.process.ArgIterator) !Command {
         return .{ .go = name };
     }
 
+    if (std.mem.eql(u8, subcommand, "init")) {
+        const shell = args.next() orelse return error.InvalidArgs;
+        if (!std.mem.eql(u8, shell, "zsh")) return error.ZshOnlySupported;
+        return .{ .init_shell = shell };
+    }
     return error.InvalidArgs;
 }
 
@@ -48,6 +56,10 @@ pub fn run(self: App, cmd: Command) !void {
                     },
                 }
             };
+        },
+        .init_shell => |shell| {
+            const tag = std.meta.stringToEnum(Shell, shell) orelse return error.InvalidArgs;
+            try self.runInitShell(tag);
         },
     }
 }
@@ -78,6 +90,31 @@ fn runGo(self: App, name: []const u8) !void {
     const stdout = &out_writer.interface;
     try stdout.print("cd {s}\n", .{workspace_path});
     try stdout.flush();
+}
+
+fn runInitShell(self: App, shell: Shell) !void {
+    _ = self;
+
+    var out_buf: [1024]u8 = undefined;
+    var out_writer = std.fs.File.stdout().writer(&out_buf);
+    const stdout = &out_writer.interface;
+    switch (shell) {
+        .zsh => {
+            try stdout.print(
+                "ww() {{\n" ++
+                    "  local out\n" ++
+                    "  out=\"$(command ww \"$@\")\" || return\n" ++
+                    "  if [[ \"$1\" == \"go\" ]]; then\n" ++
+                    "    eval \"$out\"\n" ++
+                    "  else\n" ++
+                    "    print -r -- \"$out\"\n" ++
+                    "  fi\n" ++
+                    "}}\n",
+                .{},
+            );
+            try stdout.flush();
+        },
+    }
 }
 
 fn existsWorkspace(allocator: std.mem.Allocator, name: []const u8) !bool {
