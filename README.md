@@ -23,6 +23,7 @@ ww new <name>
 ww go <name>
 ww list
 ww init zsh
+ww completion zsh
 ```
 
 ### Commands
@@ -35,6 +36,8 @@ ww init zsh
   - Shows workspace names from `jj workspace list`.
 - `init zsh`
   - Prints a zsh function that interprets `ww` output.
+- `completion zsh`
+  - Prints a zsh completion script.
 
 ## zsh Integration
 
@@ -45,6 +48,10 @@ eval "$(ww init zsh)"
 ```
 
 After that, `ww go <name>` will move your current directory.
+
+## Completion
+
+`ww completion` is available (zsh only for now).
 
 ## Workspace Location
 

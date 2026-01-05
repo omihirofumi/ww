@@ -11,6 +11,7 @@ const Command = union(enum) {
     new: []const u8,
     go: []const u8,
     init_shell: []const u8,
+    completion: []const u8,
     list: void,
 };
 
@@ -34,12 +35,16 @@ pub fn parse(self: App, args: *std.process.ArgIterator) !Command {
 
     if (std.mem.eql(u8, subcommand, "init")) {
         const shell = args.next() orelse return error.InvalidArgs;
-        if (!std.mem.eql(u8, shell, "zsh")) return error.ZshOnlySupported;
         return .{ .init_shell = shell };
     }
 
     if (std.mem.eql(u8, subcommand, "list")) {
         return .{ .list = {} };
+    }
+
+    if (std.mem.eql(u8, subcommand, "completion")) {
+        const shell = args.next() orelse return error.InvalidArgs;
+        return .{ .completion = shell };
     }
     return error.InvalidArgs;
 }
@@ -65,6 +70,10 @@ pub fn run(self: App, cmd: Command) !void {
         .init_shell => |shell| {
             const tag = std.meta.stringToEnum(Shell, shell) orelse return error.InvalidArgs;
             try self.runInitShell(tag);
+        },
+        .completion => |shell| {
+            const tag = std.meta.stringToEnum(Shell, shell) orelse return error.InvalidArgs;
+            try self.runCompletion(tag);
         },
         .list => {
             try self.runList();
@@ -118,6 +127,60 @@ fn runInitShell(self: App, shell: Shell) !void {
                     "    print -r -- \"$out\"\n" ++
                     "  fi\n" ++
                     "}}\n",
+                .{},
+            );
+            try stdout.flush();
+        },
+    }
+}
+
+fn runCompletion(self: App, shell: Shell) !void {
+    _ = self;
+
+    var out_buf: [1024]u8 = undefined;
+    var out_writer = std.fs.File.stdout().writer(&out_buf);
+    const stdout = &out_writer.interface;
+
+    switch (shell) {
+        .zsh => {
+            try stdout.print(
+                "#compdef ww\n" ++
+                    "\n" ++
+                    "_ww() {{\n" ++
+                    "  local -a subcmds\n" ++
+                    "  subcmds=(\n" ++
+                    "    'new:Create workspace'\n" ++
+                    "    'go:Go to workspace'\n" ++
+                    "    'list:List workspaces'\n" ++
+                    "    'init:Print shell init'\n" ++
+                    "    'completion:Print completion script'\n" ++
+                    "  )\n" ++
+                    "\n" ++
+                    "  _arguments -C \\\n" ++
+                    "    '1:command:->cmds' \\\n" ++
+                    "    '2:arg:->args' && return 0\n" ++
+                    "\n" ++
+                    "  case $state in\n" ++
+                    "    cmds)\n" ++
+                    "      _describe -t commands 'ww command' subcmds\n" ++
+                    "      ;;\n" ++
+                    "    args)\n" ++
+                    "      case $words[2] in\n" ++
+                    "        go)\n" ++
+                    "          compadd -- $(ww list)\n" ++
+                    "          ;;\n" ++
+                    "        new)\n" ++
+                    "          _message 'workspace name'\n" ++
+                    "          ;;\n" ++
+                    "        init|completion)\n" ++
+                    "          compadd zsh\n" ++
+                    "          ;;\n" ++
+                    "      esac\n" ++
+                    "      ;;\n" ++
+                    "  esac\n" ++
+                    "}}\n" ++
+                    "\n" ++
+                    "compdef _ww ww\n",
                 .{},
             );
             try stdout.flush();
