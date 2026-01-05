@@ -28,7 +28,8 @@ fn printUsage() !void {
         "usage:\n" ++
             "  ww new <name>\n" ++
             "  ww go <name>\n" ++
-            "  ww init zsh\n",
+            "  ww init zsh\n" ++
+            "  ww completion zsh\n",
         .{},
     );
     try stderr.flush();
