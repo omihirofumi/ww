@@ -185,7 +185,9 @@ fn runCompletion(self: App, shell: Shell) !void {
                     "          compadd -- $(ww list)\n" ++
                     "          ;;\n" ++
                     "        new)\n" ++
-                    "          _message 'workspace name'\n" ++
+                    "          _arguments -C \\\n" ++
+                    "            '(-r --revision)'{-r,--revision}'[revision]:revision:' \\\n" ++
+                    "            '1:workspace name:'\n" ++
                     "          ;;\n" ++
                     "        init|completion)\n" ++
                     "          compadd zsh\n" ++
