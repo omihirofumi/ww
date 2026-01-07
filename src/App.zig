@@ -186,7 +186,7 @@ fn runCompletion(self: App, shell: Shell) !void {
                     "          ;;\n" ++
                     "        new)\n" ++
                     "          _arguments -C \\\n" ++
-                    "            '(-r --revision)'{-r,--revision}'[revision]:revision:' \\\n" ++
+                    "            '(-r --revision)'{{-r,--revision}}'[revision]:revision:' \\\n" ++
                     "            '1:workspace name:'\n" ++
                     "          ;;\n" ++
                     "        init|completion)\n" ++
