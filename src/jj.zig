@@ -39,8 +39,20 @@ pub fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
     return try allocator.dupe(u8, trimmed);
 }
 
-pub fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8) !void {
-    var child = std.process.Child.init(&.{ "jj", "workspace", "add", path }, allocator);
+pub fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8, revision: ?[]const u8) !void {
+    var args = try std.ArrayList([]const u8).initCapacity(allocator, 8);
+    defer args.deinit(allocator);
+
+    try args.append(allocator, "jj");
+    try args.append(allocator, "workspace");
+    try args.append(allocator, "add");
+    if (revision) |rev| {
+        try args.append(allocator, "-r");
+        try args.append(allocator, rev);
+    }
+    try args.append(allocator, path);
+
+    var child = std.process.Child.init(args.items, allocator);
     child.stdin_behavior = .Inherit;
     child.stdout_behavior = .Inherit;
     child.stderr_behavior = .Inherit;

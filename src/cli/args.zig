@@ -3,7 +3,6 @@ const mem = std.mem;
 
 pub fn parseOptions(
     comptime T: type,
-    alloc: std.mem.Allocator,
     dst: *T,
     args: *std.process.ArgIterator,
 ) !?[]const u8 {
@@ -23,7 +22,7 @@ pub fn parseOptions(
                 value = args.next() orelse return error.InvalidArgs;
             }
 
-            try parseIntoField(T, alloc, dst, key, value);
+            try parseIntoField(T, dst, key, value);
             continue;
         }
 
@@ -32,7 +31,7 @@ pub fn parseOptions(
             const value = args.next() orelse return error.InvalidArgs;
 
             const long = shortToLong(short) orelse return error.InvalidArgs;
-            try parseIntoField(T, alloc, dst, long, value);
+            try parseIntoField(T, dst, long, value);
             continue;
         }
 
@@ -43,13 +42,12 @@ pub fn parseOptions(
 }
 
 fn shortToLong(short: []const u8) ?[]const u8 {
-    if (mem.eql(u8, short, "r")) return "revset";
+    if (mem.eql(u8, short, "r")) return "revision";
     return null;
 }
 
 fn parseIntoField(
     comptime T: type,
-    alloc: std.mem.Allocator,
     dst: *T,
     key: []const u8,
     value: ?[]const u8,
@@ -66,12 +64,7 @@ fn parseIntoField(
             const field_info = @typeInfo(Field);
 
             @field(dst, field.name) = switch (Field) {
-                []const u8 => value: {
-                    const slice = value orelse return error.ValueRequired;
-                    const buf = try alloc.alloc(u8, slice.len);
-                    mem.copyForwards(u8, buf, slice);
-                    break :value buf;
-                },
+                []const u8 => value orelse return error.InvalidArgs,
                 bool => try parseBool(value orelse "t"),
                 i8,
                 i16,

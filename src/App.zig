@@ -2,39 +2,54 @@ const App = @This();
 
 const std = @import("std");
 const jj = @import("jj.zig");
+const args = @import("cli/args.zig");
 
 var error_buf: [1024]u8 = undefined;
 var stderr_writer = std.fs.File.stderr().writer(&error_buf);
 const stderr = &stderr_writer.interface;
 
 const Command = union(enum) {
-    new: []const u8,
+    new: struct { name: []const u8, revision: ?[]const u8 },
     go: []const u8,
     init_shell: []const u8,
     completion: []const u8,
     list: void,
 };
 
+const NewOptions = struct {
+    revision: ?[]const u8 = null,
+};
+
+fn parseNewArgs(it: *std.process.ArgIterator) !struct {
+    name: []const u8,
+    opts: NewOptions,
+} {
+    var opts: NewOptions = .{};
+    const name = try args.parseOptions(NewOptions, &opts, it) orelse return error.InvalidArgs;
+    if (it.next() != null) return error.InvalidArgs;
+    return .{ .name = name, .opts = opts };
+}
+
 const Shell = enum { zsh };
 
 allocator: std.mem.Allocator,
 
-pub fn parse(self: App, args: *std.process.ArgIterator) !Command {
+pub fn parse(self: App, it: *std.process.ArgIterator) !Command {
     _ = self;
-    const subcommand = args.next() orelse return error.InvalidArgs;
+    const subcommand = it.next() orelse return error.InvalidArgs;
 
     if (std.mem.eql(u8, subcommand, "new")) {
-        const name = args.next() orelse return error.InvalidArgs;
-        return .{ .new = name };
+        const parsed = try parseNewArgs(it);
+        return .{ .new = .{ .name = parsed.name, .revision = parsed.opts.revision } };
     }
 
     if (std.mem.eql(u8, subcommand, "go")) {
-        const name = args.next() orelse return error.InvalidArgs;
+        const name = it.next() orelse return error.InvalidArgs;
         return .{ .go = name };
     }
 
     if (std.mem.eql(u8, subcommand, "init")) {
-        const shell = args.next() orelse return error.InvalidArgs;
+        const shell = it.next() orelse return error.InvalidArgs;
         return .{ .init_shell = shell };
     }
 
@@ -43,7 +58,7 @@ pub fn parse(self: App, args: *std.process.ArgIterator) !Command {
     }
 
     if (std.mem.eql(u8, subcommand, "completion")) {
-        const shell = args.next() orelse return error.InvalidArgs;
+        const shell = it.next() orelse return error.InvalidArgs;
         return .{ .completion = shell };
     }
     return error.InvalidArgs;
@@ -51,7 +66,7 @@ pub fn parse(self: App, args: *std.process.ArgIterator) !Command {
 
 pub fn run(self: App, cmd: Command) !void {
     switch (cmd) {
-        .new => |name| try self.runNew(name),
+        .new => |v| try self.runNew(v.name, .{ .revision = v.revision }),
         .go => |name| {
             self.runGo(name) catch |err| {
                 switch (err) {
@@ -81,14 +96,14 @@ pub fn run(self: App, cmd: Command) !void {
     }
 }
 
-fn runNew(self: App, name: []const u8) !void {
+fn runNew(self: App, name: []const u8, opts: NewOptions) !void {
     const repo_root = try jj.jjRoot(self.allocator);
     defer self.allocator.free(repo_root);
 
     const workspace_path = try jj.buildWorkspacePath(self.allocator, repo_root, name);
     defer self.allocator.free(workspace_path);
 
-    try jj.runJjWorkspaceAdd(self.allocator, workspace_path);
+    try jj.runJjWorkspaceAdd(self.allocator, workspace_path, opts.revision);
 }
 
 fn runGo(self: App, name: []const u8) !void {
