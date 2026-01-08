@@ -19,7 +19,9 @@ pub fn parseOptions(
                 value = key[idx + 1 ..];
                 key = key[0..idx];
             } else {
-                value = args.next() orelse return error.InvalidArgs;
+                if (!isBoolField(T, key)) {
+                    value = args.next() orelse return error.InvalidArgs;
+                }
             }
 
             try parseIntoField(T, dst, key, value);
@@ -28,9 +30,15 @@ pub fn parseOptions(
 
         if (mem.startsWith(u8, arg, "-") and arg.len == 2) {
             const short = arg[1..2];
+            const long = shortToLong(short) orelse return error.InvalidArgs;
+
+            if (isBoolField(T, long)) {
+                try parseIntoField(T, dst, long, "true");
+                continue;
+            }
+
             const value = args.next() orelse return error.InvalidArgs;
 
-            const long = shortToLong(short) orelse return error.InvalidArgs;
             try parseIntoField(T, dst, long, value);
             continue;
         }
@@ -41,8 +49,28 @@ pub fn parseOptions(
     return null;
 }
 
+fn isBoolField(comptime T: type, key: []const u8) bool {
+    const info = @typeInfo(T);
+    if (info != .@"struct") {
+        @compileError("isBoolField requires a struct");
+    }
+
+    inline for (info.@"struct".fields) |field| {
+        if (mem.eql(u8, field.name, key)) {
+            const Field = switch (@typeInfo(field.type)) {
+                .optional => |opt| opt.child,
+                else => field.type,
+            };
+            return Field == bool;
+        }
+    }
+
+    return false;
+}
+
 fn shortToLong(short: []const u8) ?[]const u8 {
     if (mem.eql(u8, short, "r")) return "revision";
+    if (mem.eql(u8, short, "c")) return "create";
     return null;
 }
 
