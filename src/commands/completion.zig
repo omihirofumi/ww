@@ -47,7 +47,7 @@ pub fn run(parsed: Parsed) !void {
                     "          _arguments -C \\\n" ++
                     "            '(-r --revision)'{{-r,--revision}}'[revision]:revision:' \\\n" ++
                     "            '(-c --create)'{{-c,--create}}'[create if missing]' \\\n" ++
-                    "            '1:workspace name:'\n" ++
+                    "            '1:workspace name:->workspaces'\n" ++
                     "          ;;\n" ++
                     "        new)\n" ++
                     "          _arguments -C \\\n" ++
@@ -61,6 +61,11 @@ pub fn run(parsed: Parsed) !void {
                     "          compadd new go list init completion help\n" ++
                     "          ;;\n" ++
                     "      esac\n" ++
+                    "      ;;\n" ++
+                    "    workspaces)\n" ++
+                    "      local -a ws\n" ++
+                    "      ws=(${{(f)\"$(ww list 2>/dev/null)\"}})\n" ++
+                    "      compadd -a ws\n" ++
                     "      ;;\n" ++
                     "  esac\n" ++
                     "}}\n" ++
