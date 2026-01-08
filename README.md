@@ -66,7 +66,7 @@ After that, `ww go <name>` will move your current directory.
 `ww` uses `jj root` and creates workspaces at:
 
 ```
-$HOME/.jj-workspace/<repo_name>/<name>
+../<repo_name>__<name>
 ```
 
 ## Example

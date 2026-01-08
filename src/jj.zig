@@ -1,13 +1,9 @@
 const std = @import("std");
 
 pub fn buildWorkspacePath(allocator: std.mem.Allocator, repo_root: []const u8, name: []const u8) ![]const u8 {
-    const repo_name = std.fs.path.basename(repo_root);
-    const home = std.posix.getenv("HOME") orelse return error.MissingHome;
-
-    return try std.fs.path.join(allocator, &.{
-        home,
-        ".jj-workspace",
-        repo_name,
+    return std.mem.concat(allocator, u8, &[_][]const u8{
+        repo_root,
+        "__",
         name,
     });
 }
