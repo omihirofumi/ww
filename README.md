@@ -19,25 +19,33 @@ brew install ww
 ## Usage
 
 ```sh
-ww new <name>
-ww go <name>
+ww new [options] <name>
+ww go [options] <name>
 ww list
 ww init zsh
 ww completion zsh
+ww help [command]
 ```
 
 ### Commands
 
-- `new <name>`
+- `new [options] <name>`
   - Runs `jj workspace add` to create a workspace.
-- `go <name>`
+  - Options:
+    - `-r, --revision <revision>`: revision to use when creating.
+- `go [options] <name>`
   - Prints a `cd ...` command for the workspace path.
+  - Options:
+    - `-c, --create`: create workspace if missing.
+    - `-r, --revision <revision>`: revision to use when creating.
 - `list`
   - Shows workspace names from `jj workspace list`.
 - `init zsh`
   - Prints a zsh function that interprets `ww` output.
 - `completion zsh`
   - Prints a zsh completion script.
+- `help [command]`
+  - Shows help for `ww` or a specific command.
 
 ## zsh Integration
 
@@ -64,7 +72,11 @@ $HOME/.jj-workspace/<repo_name>/<name>
 ## Example
 
 ```sh
-ww new feature-x
+ww new -r @- feature-x
 ww list
-ww go feature-x
+ww go -c -r @- feature-x
 ```
+
+## Help
+
+Use `-h` or `--help` to show help, or `ww help <command>` for command-specific usage.
