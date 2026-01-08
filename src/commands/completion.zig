@@ -30,6 +30,7 @@ pub fn run(parsed: Parsed) !void {
                     "    'list:List workspaces'\n" ++
                     "    'init:Print shell init'\n" ++
                     "    'completion:Print completion script'\n" ++
+                    "    'help:Show help'\n" ++
                     "  )\n" ++
                     "\n" ++
                     "  _arguments -C \\\n" ++
@@ -52,6 +53,9 @@ pub fn run(parsed: Parsed) !void {
                     "          ;;\n" ++
                     "        init|completion)\n" ++
                     "          compadd zsh\n" ++
+                    "          ;;\n" ++
+                    "        help)\n" ++
+                    "          compadd new go list init completion help\n" ++
                     "          ;;\n" ++
                     "      esac\n" ++
                     "      ;;\n" ++

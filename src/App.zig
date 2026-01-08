@@ -3,6 +3,7 @@ const App = @This();
 const std = @import("std");
 const cmd_completion = @import("commands/completion.zig");
 const cmd_go = @import("commands/go.zig");
+const cmd_help = @import("commands/help.zig");
 const cmd_init = @import("commands/init.zig");
 const cmd_list = @import("commands/list.zig");
 const cmd_new = @import("commands/new.zig");
@@ -14,6 +15,7 @@ const stderr = &stderr_writer.interface;
 const Command = union(enum) {
     new: cmd_new.Parsed,
     go: cmd_go.Parsed,
+    help: cmd_help.Parsed,
     init_shell: cmd_init.Parsed,
     completion: cmd_completion.Parsed,
     list: cmd_list.Parsed,
@@ -31,6 +33,13 @@ pub fn parse(self: App, it: *std.process.ArgIterator) !Command {
 
     if (std.mem.eql(u8, subcommand, "go")) {
         return .{ .go = try cmd_go.parse(it) };
+    }
+
+    if (std.mem.eql(u8, subcommand, "help") or
+        std.mem.eql(u8, subcommand, "-h") or
+        std.mem.eql(u8, subcommand, "--help"))
+    {
+        return .{ .help = try cmd_help.parse(it) };
     }
 
     if (std.mem.eql(u8, subcommand, "init")) {
@@ -65,6 +74,7 @@ pub fn run(self: App, cmd: Command) !void {
                 }
             };
         },
+        .help => |parsed| try cmd_help.run(parsed),
         .init_shell => |parsed| try cmd_init.run(parsed),
         .completion => |parsed| try cmd_completion.run(parsed),
         .list => |parsed| try cmd_list.run(self.allocator, parsed),
