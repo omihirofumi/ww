@@ -35,7 +35,7 @@ pub fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
     return try allocator.dupe(u8, trimmed);
 }
 
-pub fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8, revision: ?[]const u8) !void {
+pub fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8, revision: ?[]const u8, name: ?[]const u8) !void {
     var args = try std.ArrayList([]const u8).initCapacity(allocator, 8);
     defer args.deinit(allocator);
 
@@ -45,6 +45,10 @@ pub fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8, revisio
     if (revision) |rev| {
         try args.append(allocator, "-r");
         try args.append(allocator, rev);
+    }
+    if (name) |n| {
+        try args.append(allocator, "--name");
+        try args.append(allocator, n);
     }
     try args.append(allocator, path);
 
