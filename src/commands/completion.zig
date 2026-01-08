@@ -46,7 +46,7 @@ pub fn run(parsed: Parsed) !void {
                     "        go)\n" ++
                     "          _arguments -C \\\n" ++
                     "            '(-r --revision)'{{-r,--revision}}'[revision]:revision:' \\\n" ++
-                    "            '(-c --create)'{-c,--create}'[create if missing]' \\\n" ++
+                    "            '(-c --create)'{{-c,--create}}'[create if missing]' \\\n" ++
                     "            '1:workspace name:'\n" ++
                     "          ;;\n" ++
                     "        new)\n" ++

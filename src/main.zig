@@ -15,22 +15,28 @@ pub fn main() !void {
 
     var app = App{ .allocator = allocator };
 
-    const cmd = app.parse(&args) catch {
-        try printUsage();
+    const cmd = app.parse(&args) catch |err| {
+        switch (err) {
+            error.UnrecognizedSubcommand => {
+                if (app.last_subcommand) |name| {
+                    try stderr.print("error: unrecognized subcommand '{s}'\n\n", .{name});
+                } else {
+                    try stderr.print("error: unrecognized subcommand\n\n", .{});
+                }
+            },
+            else => {
+                try stderr.print("error: invalid arguments\n\n", .{});
+            },
+        }
+
+        try stderr.print(
+            "Usage: ww [OPTIONS] <COMMAND>\n\n" ++
+                "For more information, try '--help'.\n",
+            .{},
+        );
+        try stderr.flush();
         return;
     };
 
     try app.run(cmd);
-}
-
-fn printUsage() !void {
-    try stderr.print(
-        "usage:\n" ++
-            "  ww new <name>\n" ++
-            "  ww go <name>\n" ++
-            "  ww init zsh\n" ++
-            "  ww completion zsh\n",
-        .{},
-    );
-    try stderr.flush();
 }

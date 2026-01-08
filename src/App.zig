@@ -22,10 +22,11 @@ const Command = union(enum) {
 };
 
 allocator: std.mem.Allocator,
+last_subcommand: ?[]const u8 = null,
 
-pub fn parse(self: App, it: *std.process.ArgIterator) !Command {
-    _ = self;
+pub fn parse(self: *App, it: *std.process.ArgIterator) !Command {
     const subcommand = it.next() orelse return error.InvalidArgs;
+    self.last_subcommand = subcommand;
 
     if (std.mem.eql(u8, subcommand, "new")) {
         return .{ .new = try cmd_new.parse(it) };
@@ -53,7 +54,7 @@ pub fn parse(self: App, it: *std.process.ArgIterator) !Command {
     if (std.mem.eql(u8, subcommand, "completion")) {
         return .{ .completion = try cmd_completion.parse(it) };
     }
-    return error.InvalidArgs;
+    return error.UnrecognizedSubcommand;
 }
 
 pub fn run(self: App, cmd: Command) !void {
