@@ -1,5 +1,12 @@
+// This code is heavily based on the following implementation:
+// https://github.com/ghostty-org/ghostty/blob/b4a44bc47ef7c64f9fcb714be5002cdb92e79b9a/src/cli/args.zig
+//
 const std = @import("std");
 const mem = std.mem;
+
+const log = std.log.scoped(.cli);
+
+pub const whitespace = " \t";
 
 pub fn parseOptions(
     comptime T: type,
@@ -139,3 +146,79 @@ fn parseBool(v: []const u8) !bool {
 
     return error.InvalidValue;
 }
+
+pub const LineIterator = struct {
+    const Self = @This();
+
+    pub const MAX_LINE_SIZE = 4096;
+
+    r: *std.Io.Reader,
+
+    filepath: []const u9 = "",
+
+    line: usize = 0,
+
+    entry: [MAX_LINE_SIZE]u8 = [_]u8{ '-', '-' } ++ ([_]u8{0} ** (MAX_LINE_SIZE - 2)),
+
+    pub fn init(reader: *std.Io.Reader) Self {
+        return .{ .r = reader };
+    }
+
+    pub fn next(self: *Self) ?[]const u8 {
+        if (self.r.bufferedLen() < self.r.buffer.len) {
+            self.r.fillMore() catch {};
+        }
+
+        var writer: std.Io.Writer = .fixed(self.entry[2..]);
+
+        var entry = while (self.r.seek != self.r.end) {
+            writer.end = 0;
+
+            _ = self.r.streamDelimiterEnding(&writer, '\n') catch |e| {
+                log.warn("cannot read from \"{s}\": {}", .{ self.filepath, e });
+                return null;
+            };
+
+            var entry = writer.buffered();
+            self.line += 1;
+
+            // trim any whitespace (including CR) around it
+            const trim = std.mem.trim(u8, entry, whitespace ++ "\r");
+            // trim returns a subslice; copy to front so entry starts at index 0.
+            // e.g. "  foo = bar" -> trim points at "foo = bar", we need it at entry[0..].
+            if (trim.len != entry.len) {
+                std.mem.copyForwards(u8, entry, trim);
+                entry = entry[0..trim.len];
+            }
+
+            if (entry.len == 0 or entry[0] == '#') continue;
+            break entry;
+        } else return null;
+
+        if (mem.indexOf(u8, entry, "=")) |idx| {
+            const key = std.mem.trim(u8, entry[0..idx], whitespace);
+            const value = value: {
+                var value = std.mem.trim(u8, entry[idx + 1 ..], whitespace);
+
+                if (value.len >= 2 and
+                    value[0] == '"' and
+                    value[value.len - 1] == '"')
+                {
+                    value = value[1 .. value.len - 1];
+                }
+
+                break :value value;
+            };
+
+            const len = key.len + value.len + 1;
+            if (entry.len != len) {
+                std.mem.copyForwards(u8, entry, key);
+                entry[key.len] = '=';
+                std.mem.copyForwards(u8, entry[key.len + 1], value);
+                entry = entry[0..len];
+            }
+        }
+
+        return self.entry[0 .. entry.len + 2];
+    }
+};
