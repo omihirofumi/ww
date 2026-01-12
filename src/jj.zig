@@ -106,6 +106,7 @@ const Checkout = struct {
     workspace_name: []const u8 = &.{},
 };
 
+// The workspace name is written in protobuf encoded format at .jj/workspace/checkout
 fn decodeCheckout(allocator: std.mem.Allocator) !Checkout {
     const cwd = std.fs.cwd();
     const file = try cwd.openFile(".jj/working_copy/checkout", .{ .mode = .read_only });
