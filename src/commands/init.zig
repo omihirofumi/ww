@@ -23,7 +23,7 @@ pub fn run(parsed: Parsed) !void {
                 "ww() {{\n" ++
                     "  local out\n" ++
                     "  out=\"$(command ww \"$@\")\" || return\n" ++
-                    "  if [[ \"$1\" == \"go\" ]]; then\n" ++
+                    "  if [[ \"$1\" == \"go\" || \"$1\" == \"default\" ]]; then\n" ++
                     "    eval \"$out\"\n" ++
                     "  else\n" ++
                     "    print -r -- \"$out\"\n" ++
