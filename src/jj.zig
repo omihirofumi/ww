@@ -1,6 +1,8 @@
 const std = @import("std");
 const protobuf = @import("protobuf/decode.zig");
 
+const checkout_path = ".jj/working_copy/checkout";
+
 pub fn buildWorkspacePath(allocator: std.mem.Allocator, repo_root: []const u8, name: []const u8) ![]const u8 {
     return std.mem.concat(allocator, u8, &[_][]const u8{
         repo_root,
@@ -102,18 +104,37 @@ pub fn listWorkspaces(allocator: std.mem.Allocator) ![]const []const u8 {
     return workspace_list.toOwnedSlice(allocator);
 }
 
-// The workspace name is written in protobuf encoded format at .jj/workspace/checkout
-fn decodeCheckout(allocator: std.mem.Allocator) ![]const u8 {
-    const cwd = std.fs.cwd();
-    const file = try cwd.openFile(".jj/working_copy/checkout", .{ .mode = .read_only });
+pub fn mainWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
+    const root = try jjRoot(allocator);
+    defer allocator.free(root);
+
+    const root_checkout_path = try std.fs.path.join(allocator, &.{ root, checkout_path });
+    defer allocator.free(root_checkout_path);
+
+    const file = try std.fs.openFileAbsolute(root_checkout_path, .{ .mode = .read_only });
     defer file.close();
 
+    return try decodeWorkspaceName(allocator, file);
+}
+
+// The workspace name is written in protobuf encoded format at .jj/workspace/checkout
+fn currentWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
+    const cwd = std.fs.cwd();
+    const file = try cwd.openFile(checkout_path, .{ .mode = .read_only });
+    defer file.close();
+
+    return try decodeWorkspaceName(allocator, file);
+}
+
+fn decodeWorkspaceName(allocator: std.mem.Allocator, file: std.fs.File) ![]const u8 {
     var f_buf: [1024]u8 = undefined;
     var f_reader = file.reader(&f_buf);
     const reader = &f_reader.interface;
 
     const content = try reader.allocRemaining(allocator, .unlimited);
+    defer allocator.free(content);
+
     var decode_reader = protobuf.Reader.init(content);
     const checkout = try protobuf.decodeCheckout(&decode_reader);
-    return checkout.workspace_name;
+    return try allocator.dupe(u8, checkout.workspace_name);
 }
