@@ -102,12 +102,8 @@ pub fn listWorkspaces(allocator: std.mem.Allocator) ![]const []const u8 {
     return workspace_list.toOwnedSlice(allocator);
 }
 
-const Checkout = struct {
-    workspace_name: []const u8 = &.{},
-};
-
 // The workspace name is written in protobuf encoded format at .jj/workspace/checkout
-fn decodeCheckout(allocator: std.mem.Allocator) !Checkout {
+fn decodeCheckout(allocator: std.mem.Allocator) ![]const u8 {
     const cwd = std.fs.cwd();
     const file = try cwd.openFile(".jj/working_copy/checkout", .{ .mode = .read_only });
     defer file.close();
@@ -119,5 +115,5 @@ fn decodeCheckout(allocator: std.mem.Allocator) !Checkout {
     const content = try reader.allocRemaining(allocator, .unlimited);
     var decode_reader = protobuf.Reader.init(content);
     const checkout = try protobuf.decodeCheckout(&decode_reader);
-    return checkout;
+    return checkout.workspace_name;
 }
