@@ -12,9 +12,9 @@ pub fn buildWorkspacePath(allocator: std.mem.Allocator, repo_root: []const u8, n
     });
 }
 
-pub fn mainRoot(allocator: std.mem.Allocator) ![]const u8 {
-    // in the main workspace, just retun `jj root`
-    if (try isCurrentMain()) {
+pub fn defaultRoot(allocator: std.mem.Allocator) ![]const u8 {
+    // in the default workspace, just retun `jj root`
+    if (try isCurrentdefault()) {
         return try jjRoot(allocator);
     }
 
@@ -25,15 +25,15 @@ pub fn mainRoot(allocator: std.mem.Allocator) ![]const u8 {
     var f_reader = repo.reader(&buf);
     const reader = &f_reader.interface;
 
-    var main_root: [1024]u8 = undefined;
-    const n = try reader.readSliceShort(&main_root);
+    var default_root: [1024]u8 = undefined;
+    const n = try reader.readSliceShort(&default_root);
 
     // the content of .jj/repo is here.
     // ----------------
-    // <main_repo>/.jj/repo
+    // <default_workspace>/.jj/repo
     // ------------
-    // -> <main_repo> length = n - repo_path.len
-    return try allocator.dupe(u8, main_root[0 .. n - repo_path.len]);
+    // -> <default_workspace> length = n - repo_path.len
+    return try allocator.dupe(u8, default_root[0 .. n - repo_path.len]);
 }
 
 fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
@@ -129,11 +129,11 @@ pub fn listWorkspaces(allocator: std.mem.Allocator) ![]const []const u8 {
     return workspace_list.toOwnedSlice(allocator);
 }
 
-pub fn mainWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
-    const main_root = try mainRoot(allocator);
-    defer allocator.free(main_root);
+pub fn defaultWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
+    const default_root = try defaultRoot(allocator);
+    defer allocator.free(default_root);
 
-    const root_checkout_path = try std.fs.path.join(allocator, &.{ main_root, checkout_path });
+    const root_checkout_path = try std.fs.path.join(allocator, &.{ default_root, checkout_path });
     defer allocator.free(root_checkout_path);
 
     const file = try std.fs.openFileAbsolute(root_checkout_path, .{ .mode = .read_only });
@@ -142,7 +142,7 @@ pub fn mainWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
     return try decodeWorkspaceName(allocator, file);
 }
 
-fn isCurrentMain() !bool {
+fn isCurrentdefault() !bool {
     const cwd = std.fs.cwd();
     const stat = try cwd.statFile(repo_path);
     return if (stat.kind == .directory) true else false;

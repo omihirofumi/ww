@@ -20,12 +20,12 @@ pub fn parse(it: *std.process.ArgIterator) !Parsed {
 }
 
 pub fn run(allocator: std.mem.Allocator, parsed: Parsed) !void {
-    const main_root = try jj.mainRoot(allocator);
-    defer allocator.free(main_root);
+    const default_root = try jj.defaultRoot(allocator);
+    defer allocator.free(default_root);
     if (!(try existsWorkspace(allocator, parsed.name))) {
         if (!parsed.options.create) return error.WorkspaceNotFound;
 
-        const workspace_path = try jj.buildWorkspacePath(allocator, main_root, parsed.name);
+        const workspace_path = try jj.buildWorkspacePath(allocator, default_root, parsed.name);
         defer allocator.free(workspace_path);
 
         try jj.runJjWorkspaceAdd(allocator, workspace_path, parsed.options.revision, parsed.name);
@@ -35,17 +35,17 @@ pub fn run(allocator: std.mem.Allocator, parsed: Parsed) !void {
     var out_writer = std.fs.File.stdout().writer(&out_buf);
     const stdout = &out_writer.interface;
 
-    // if destination is main, go to root.
-    const main_workspace = try jj.mainWorkspaceName(allocator);
-    defer allocator.free(main_workspace);
+    // if destination is default, go to root.
+    const default_workspace = try jj.defaultWorkspaceName(allocator);
+    defer allocator.free(default_workspace);
 
-    if (std.mem.eql(u8, parsed.name, main_workspace)) {
-        try stdout.print("cd {s}\n", .{main_root});
+    if (std.mem.eql(u8, parsed.name, default_workspace)) {
+        try stdout.print("cd {s}\n", .{default_root});
         try stdout.flush();
         return;
     }
 
-    const workspace_path = try jj.buildWorkspacePath(allocator, main_root, parsed.name);
+    const workspace_path = try jj.buildWorkspacePath(allocator, default_root, parsed.name);
     defer allocator.free(workspace_path);
 
     try stdout.print("cd {s}\n", .{workspace_path});
