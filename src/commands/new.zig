@@ -1,6 +1,6 @@
 const std = @import("std");
 const jj = @import("../jj.zig");
-const args = @import("../cli/args.zig");
+const args = @import("args.zig");
 
 pub const Options = struct {
     revision: ?[]const u8 = null,
