@@ -26,6 +26,7 @@ pub fn run(parsed: Parsed) !void {
                 "  new         Create workspace\n" ++
                 "  go          Go to workspace (optionally create)\n" ++
                 "  list        List workspaces\n" ++
+                "  default     Go to default workspace\n" ++
                 "  init        Print shell init\n" ++
                 "  completion  Print completion script\n" ++
                 "  help        Show help for a command\n" ++
@@ -72,6 +73,12 @@ pub fn run(parsed: Parsed) !void {
         try stdout.print(
             "USAGE:\n" ++
                 "  ww list\n",
+            .{},
+        );
+    } else if (std.mem.eql(u8, topic, "default")) {
+        try stdout.print(
+            "USAGE:\n" ++
+                "  ww default\n",
             .{},
         );
     } else if (std.mem.eql(u8, topic, "init")) {

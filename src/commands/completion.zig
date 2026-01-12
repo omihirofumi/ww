@@ -28,6 +28,7 @@ pub fn run(parsed: Parsed) !void {
                     "    'new:Create workspace'\n" ++
                     "    'go:Go to workspace'\n" ++
                     "    'list:List workspaces'\n" ++
+                    "    'default:Go to default workspace'\n" ++
                     "    'init:Print shell init'\n" ++
                     "    'completion:Print completion script'\n" ++
                     "    'help:Show help'\n" ++
@@ -58,7 +59,7 @@ pub fn run(parsed: Parsed) !void {
                     "          compadd zsh\n" ++
                     "          ;;\n" ++
                     "        help)\n" ++
-                    "          compadd new go list init completion help\n" ++
+                    "          compadd new go list default init completion help\n" ++
                     "          ;;\n" ++
                     "      esac\n" ++
                     "      ;;\n" ++

@@ -22,6 +22,7 @@ brew install ww
 ww new [options] <name>
 ww go [options] <name>
 ww list
+ww default
 ww init zsh
 ww completion zsh
 ww help [command]
@@ -40,6 +41,8 @@ ww help [command]
     - `-r, --revision <revision>`: revision to use when creating.
 - `list`
   - Shows workspace names from `jj workspace list`.
+- `default`
+  - Prints a `cd ...` command for the default workspace.
 - `init zsh`
   - Prints a zsh function that interprets `ww` output.
 - `completion zsh`
