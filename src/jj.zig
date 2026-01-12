@@ -1,4 +1,5 @@
 const std = @import("std");
+const protobuf = @import("protobuf/decode.zig");
 
 pub fn buildWorkspacePath(allocator: std.mem.Allocator, repo_root: []const u8, name: []const u8) ![]const u8 {
     return std.mem.concat(allocator, u8, &[_][]const u8{
@@ -99,4 +100,23 @@ pub fn listWorkspaces(allocator: std.mem.Allocator) ![]const []const u8 {
     }
 
     return workspace_list.toOwnedSlice(allocator);
+}
+
+const Checkout = struct {
+    workspace_name: []const u8 = &.{},
+};
+
+fn decodeCheckout(allocator: std.mem.Allocator) !Checkout {
+    const cwd = std.fs.cwd();
+    const file = try cwd.openFile(".jj/working_copy/checkout", .{ .mode = .read_only });
+    defer file.close();
+
+    var f_buf: [1024]u8 = undefined;
+    var f_reader = file.reader(&f_buf);
+    const reader = &f_reader.interface;
+
+    const content = try reader.allocRemaining(allocator, .unlimited);
+    var decode_reader = protobuf.Reader.init(content);
+    const checkout = try protobuf.decodeCheckout(&decode_reader);
+    return checkout;
 }

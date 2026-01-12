@@ -138,6 +138,7 @@ fn zigzagDecode(n: u64) i64 {
     return shifted ^ mask;
 }
 
+// https://github.com/jj-vcs/jj/blob/v0.37.0/lib/src/protos/local_working_copy.proto
 // message Checkout {
 //   // The operation at which the working copy was updated.
 //   bytes operation_id = 2;
