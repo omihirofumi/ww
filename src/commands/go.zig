@@ -20,20 +20,16 @@ pub fn parse(it: *std.process.ArgIterator) !Parsed {
 }
 
 pub fn run(allocator: std.mem.Allocator, parsed: Parsed) !void {
+    const main_root = try jj.mainRoot(allocator);
+    defer allocator.free(main_root);
     if (!(try existsWorkspace(allocator, parsed.name))) {
         if (!parsed.options.create) return error.WorkspaceNotFound;
 
-        const repo_root = try jj.jjRoot(allocator);
-        defer allocator.free(repo_root);
-
-        const workspace_path = try jj.buildWorkspacePath(allocator, repo_root, parsed.name);
+        const workspace_path = try jj.buildWorkspacePath(allocator, main_root, parsed.name);
         defer allocator.free(workspace_path);
 
         try jj.runJjWorkspaceAdd(allocator, workspace_path, parsed.options.revision, parsed.name);
     }
-
-    const repo_root = try jj.jjRoot(allocator);
-    defer allocator.free(repo_root);
 
     var out_buf: [1024]u8 = undefined;
     var out_writer = std.fs.File.stdout().writer(&out_buf);
@@ -44,12 +40,12 @@ pub fn run(allocator: std.mem.Allocator, parsed: Parsed) !void {
     defer allocator.free(main_workspace);
 
     if (std.mem.eql(u8, parsed.name, main_workspace)) {
-        try stdout.print("cd {s}\n", .{repo_root});
+        try stdout.print("cd {s}\n", .{main_root});
         try stdout.flush();
         return;
     }
 
-    const workspace_path = try jj.buildWorkspacePath(allocator, repo_root, parsed.name);
+    const workspace_path = try jj.buildWorkspacePath(allocator, main_root, parsed.name);
     defer allocator.free(workspace_path);
 
     try stdout.print("cd {s}\n", .{workspace_path});

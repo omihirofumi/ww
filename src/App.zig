@@ -69,7 +69,7 @@ pub fn run(self: App, cmd: Command) !void {
                     },
                     // TODO: handling errors
                     else => {
-                        try stderr.print("something happened", .{});
+                        try stderr.print("something happened. {}", .{err});
                         try stderr.flush();
                     },
                 }

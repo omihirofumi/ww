@@ -2,6 +2,7 @@ const std = @import("std");
 const protobuf = @import("protobuf/decode.zig");
 
 const checkout_path = ".jj/working_copy/checkout";
+const repo_path = ".jj/repo";
 
 pub fn buildWorkspacePath(allocator: std.mem.Allocator, repo_root: []const u8, name: []const u8) ![]const u8 {
     return std.mem.concat(allocator, u8, &[_][]const u8{
@@ -11,7 +12,31 @@ pub fn buildWorkspacePath(allocator: std.mem.Allocator, repo_root: []const u8, n
     });
 }
 
-pub fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
+pub fn mainRoot(allocator: std.mem.Allocator) ![]const u8 {
+    // in the main workspace, just retun `jj root`
+    if (try isCurrentMain()) {
+        return try jjRoot(allocator);
+    }
+
+    const cwd = std.fs.cwd();
+    const repo = try cwd.openFile(repo_path, .{ .mode = .read_only });
+
+    var buf: [1024]u8 = undefined;
+    var f_reader = repo.reader(&buf);
+    const reader = &f_reader.interface;
+
+    var main_root: [1024]u8 = undefined;
+    const n = try reader.readSliceShort(&main_root);
+
+    // the content of .jj/repo is here.
+    // ----------------
+    // <main_repo>/.jj/repo
+    // ------------
+    // -> <main_repo> length = n - repo_path.len
+    return try allocator.dupe(u8, main_root[0 .. n - repo_path.len]);
+}
+
+fn jjRoot(allocator: std.mem.Allocator) ![]const u8 {
     var child = std.process.Child.init(&.{ "jj", "root" }, allocator);
     child.stdout_behavior = .Pipe;
     child.stderr_behavior = .Inherit;
@@ -105,16 +130,22 @@ pub fn listWorkspaces(allocator: std.mem.Allocator) ![]const []const u8 {
 }
 
 pub fn mainWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
-    const root = try jjRoot(allocator);
-    defer allocator.free(root);
+    const main_root = try mainRoot(allocator);
+    defer allocator.free(main_root);
 
-    const root_checkout_path = try std.fs.path.join(allocator, &.{ root, checkout_path });
+    const root_checkout_path = try std.fs.path.join(allocator, &.{ main_root, checkout_path });
     defer allocator.free(root_checkout_path);
 
     const file = try std.fs.openFileAbsolute(root_checkout_path, .{ .mode = .read_only });
     defer file.close();
 
     return try decodeWorkspaceName(allocator, file);
+}
+
+fn isCurrentMain() !bool {
+    const cwd = std.fs.cwd();
+    const stat = try cwd.statFile(repo_path);
+    return if (stat.kind == .directory) true else false;
 }
 
 // The workspace name is written in protobuf encoded format at .jj/workspace/checkout

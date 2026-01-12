@@ -19,10 +19,10 @@ pub fn parse(it: *std.process.ArgIterator) !Parsed {
 }
 
 pub fn run(allocator: std.mem.Allocator, parsed: Parsed) !void {
-    const repo_root = try jj.jjRoot(allocator);
-    defer allocator.free(repo_root);
+    const main_root = try jj.mainRoot(allocator);
+    defer allocator.free(main_root);
 
-    const workspace_path = try jj.buildWorkspacePath(allocator, repo_root, parsed.name);
+    const workspace_path = try jj.buildWorkspacePath(allocator, main_root, parsed.name);
     defer allocator.free(workspace_path);
 
     try jj.runJjWorkspaceAdd(allocator, workspace_path, parsed.options.revision, parsed.name);
