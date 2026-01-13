@@ -1,0 +1,79 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (e.g. v1.2.3)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  update-tap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Check out tap
+        uses: actions/checkout@v4
+        with:
+          repository: omihirofumi/homebrew-tap
+          path: tap
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+      - name: Update formula
+        env:
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          formula_path="tap/Formula/ww.rb"
+          tag="${TAG_NAME}"
+          version="${tag#v}"
+          url="https://github.com/omihirofumi/ww/archive/refs/tags/${tag}.tar.gz"
+          sha256="$(curl -sL "${url}" | shasum -a 256 | awk '{print $1}')"
+
+          FORMULA_PATH="${formula_path}" \
+          FORMULA_URL="${url}" \
+          FORMULA_SHA256="${sha256}" \
+          FORMULA_VERSION="${version}" \
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          formula_path = Path(os.environ["FORMULA_PATH"])
+          url = os.environ["FORMULA_URL"]
+          sha256 = os.environ["FORMULA_SHA256"]
+          version = os.environ["FORMULA_VERSION"]
+
+          text = formula_path.read_text()
+          text = re.sub(r'(^\s*url\s+")[^"]+(")', r'\1' + url + r'\2', text, flags=re.M)
+          text = re.sub(r'(^\s*sha256\s+")[^"]+(")', r'\1' + sha256 + r'\2', text, flags=re.M)
+          if re.search(r'^\s*version\s+"', text, flags=re.M):
+            text = re.sub(r'(^\s*version\s+")[^"]+(")', r'\1' + version + r'\2', text, flags=re.M)
+          formula_path.write_text(text)
+          PY
+
+      - name: Commit and push
+        env:
+          TAG_NAME: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          cd tap
+
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ww.rb
+          git commit -m "ww ${TAG_NAME}"
+          git push
