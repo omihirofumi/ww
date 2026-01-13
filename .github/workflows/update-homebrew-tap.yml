@@ -44,7 +44,6 @@ jobs:
           FORMULA_VERSION="${version}" \
           python3 - <<'PY'
           import os
-          import re
           from pathlib import Path
 
           formula_path = Path(os.environ["FORMULA_PATH"])
@@ -52,12 +51,41 @@ jobs:
           sha256 = os.environ["FORMULA_SHA256"]
           version = os.environ["FORMULA_VERSION"]
 
-          text = formula_path.read_text()
-          text = re.sub(r'(^\s*url\s+")[^"]+(")', r'\1' + url + r'\2', text, flags=re.M)
-          text = re.sub(r'(^\s*sha256\s+")[^"]+(")', r'\1' + sha256 + r'\2', text, flags=re.M)
-          if re.search(r'^\s*version\s+"', text, flags=re.M):
-            text = re.sub(r'(^\s*version\s+")[^"]+(")', r'\1' + version + r'\2', text, flags=re.M)
-          formula_path.write_text(text)
+          lines = formula_path.read_text().splitlines()
+          out = []
+          saw_url = False
+          saw_sha = False
+          saw_version = False
+
+          for line in lines:
+            stripped = line.lstrip()
+            indent = line[: len(line) - len(stripped)]
+
+            if stripped.startswith('url "'):
+              out.append(f'{indent}url "{url}"')
+              saw_url = True
+              continue
+
+            if stripped.startswith('sha256 "'):
+              out.append(f'{indent}sha256 "{sha256}"')
+              saw_sha = True
+              continue
+
+            if stripped.startswith('version "'):
+              out.append(f'{indent}version "{version}"')
+              saw_version = True
+              continue
+
+            out.append(line)
+
+          if saw_url and not saw_sha:
+            for idx, line in enumerate(out):
+              if line.lstrip().startswith('url "'):
+                indent = line[: len(line) - len(line.lstrip())]
+                out.insert(idx + 1, f'{indent}sha256 "{sha256}"')
+                break
+
+          formula_path.write_text("\n".join(out) + "\n")
           PY
 
       - name: Commit and push
