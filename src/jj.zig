@@ -13,13 +13,19 @@ pub fn buildWorkspacePath(allocator: std.mem.Allocator, repo_root: []const u8, n
 }
 
 pub fn defaultRoot(allocator: std.mem.Allocator) ![]const u8 {
-    // in the default workspace, just retun `jj root`
-    if (try isCurrentdefault()) {
-        return try jjRoot(allocator);
-    }
+    const root = try jjRoot(allocator);
 
-    const cwd = std.fs.cwd();
-    const repo = try cwd.openFile(repo_path, .{ .mode = .read_only });
+    // in the default workspace, just retun `jj root`
+    if (try isCurrentdefault(allocator)) {
+        return root;
+    }
+    defer allocator.free(root);
+
+    const current_workspace_repo = try std.fs.path.join(allocator, &.{ root, repo_path });
+    defer allocator.free(current_workspace_repo);
+
+    const repo = try std.fs.openFileAbsolute(current_workspace_repo, .{ .mode = .read_only });
+    defer repo.close();
 
     var buf: [1024]u8 = undefined;
     var f_reader = repo.reader(&buf);
@@ -133,28 +139,45 @@ pub fn defaultWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
     const default_root = try defaultRoot(allocator);
     defer allocator.free(default_root);
 
-    const root_checkout_path = try std.fs.path.join(allocator, &.{ default_root, checkout_path });
-    defer allocator.free(root_checkout_path);
+    const default_workspace_checkout_path = try std.fs.path.join(allocator, &.{ default_root, checkout_path });
+    defer allocator.free(default_workspace_checkout_path);
 
-    const file = try std.fs.openFileAbsolute(root_checkout_path, .{ .mode = .read_only });
+    const file = try std.fs.openFileAbsolute(default_workspace_checkout_path, .{ .mode = .read_only });
     defer file.close();
 
     return try decodeWorkspaceName(allocator, file);
 }
 
-fn isCurrentdefault() !bool {
-    const cwd = std.fs.cwd();
-    const stat = try cwd.statFile(repo_path);
+fn isCurrentdefault(allocator: std.mem.Allocator) !bool {
+    const root = try jjRoot(allocator);
+    defer allocator.free(root);
+
+    const current_workspace_repo = try std.fs.path.join(allocator, &.{ root, repo_path });
+    defer allocator.free(current_workspace_repo);
+
+    const file = try std.fs.openFileAbsolute(current_workspace_repo, .{ .mode = .read_only });
+    defer file.close();
+
+    const stat = try file.stat();
     return if (stat.kind == .directory) true else false;
 }
 
 // The workspace name is written in protobuf encoded format at .jj/workspace/checkout
 fn currentWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
-    const cwd = std.fs.cwd();
-    const file = try cwd.openFile(checkout_path, .{ .mode = .read_only });
+    const current_workspace_checkout_path = try currenWorkspaceCheckoutPath(allocator);
+    defer allocator.free(current_workspace_checkout_path);
+
+    const file = try std.fs.openFileAbsolute(current_workspace_checkout_path, .{ .mode = .read_only });
     defer file.close();
 
     return try decodeWorkspaceName(allocator, file);
+}
+
+fn currenWorkspaceCheckoutPath(allocator: std.mem.Allocator) ![]const u8 {
+    const root = try jjRoot(allocator);
+    defer allocator.free(root);
+
+    return try std.fs.path.join(allocator, &.{ root, checkout_path });
 }
 
 fn decodeWorkspaceName(allocator: std.mem.Allocator, file: std.fs.File) ![]const u8 {
