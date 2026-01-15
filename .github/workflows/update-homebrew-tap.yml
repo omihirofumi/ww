@@ -44,6 +44,7 @@ jobs:
           FORMULA_VERSION="${version}" \
           python3 - <<'PY'
           import os
+          import re
           from pathlib import Path
 
           formula_path = Path(os.environ["FORMULA_PATH"])
@@ -65,9 +66,10 @@ jobs:
             if stripped.startswith('system "zig", "build"'):
               saw_build = True
               if '-Dversion=' in stripped:
-                out.append(line)
+                updated = re.sub(r'-Dversion=[^",]+', f'-Dversion={version}', stripped)
+                out.append(f"{indent}{updated}")
               else:
-                out.append(f'{indent}{stripped}, "-Dversion=#{{version}}"')
+                out.append(f'{indent}{stripped}, "-Dversion={version}"')
               continue
 
             if stripped.startswith('url "'):
