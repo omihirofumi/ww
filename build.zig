@@ -83,6 +83,23 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const version = blk: {
+        var code: u8 = 0;
+        const out = b.runAllowFail(
+            &[_][]const u8{
+                "git",      "-C",     b.build_root.path orelse ".",
+                "describe", "--tags", "--abbrev=0",
+            },
+            &code,
+            .Ignore,
+        ) catch break :blk "unknown";
+        break :blk std.mem.trimRight(u8, out, "\r\n");
+    };
+
+    const build_options = b.addOptions();
+    build_options.addOption([]const u8, "version", version);
+    exe.root_module.addOptions("build_options", build_options);
+
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden

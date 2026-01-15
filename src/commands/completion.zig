@@ -35,6 +35,7 @@ pub fn run(parsed: Parsed) !void {
                     "  )\n" ++
                     "\n" ++
                     "  _arguments -C \\\n" ++
+                    "    '(--version)--version[show version]' \\\n" ++
                     "    '1:command:->cmds' \\\n" ++
                     "    '2:arg:->args' && return 0\n" ++
                     "\n" ++
