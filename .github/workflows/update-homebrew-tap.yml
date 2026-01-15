@@ -56,10 +56,19 @@ jobs:
           saw_url = False
           saw_sha = False
           saw_version = False
+          saw_build = False
 
           for line in lines:
             stripped = line.lstrip()
             indent = line[: len(line) - len(stripped)]
+
+            if stripped.startswith('system "zig", "build"'):
+              saw_build = True
+              if '-Dversion=' in stripped:
+                out.append(line)
+              else:
+                out.append(f'{indent}{stripped}, "-Dversion=#{{version}}"')
+              continue
 
             if stripped.startswith('url "'):
               out.append(f'{indent}url "{url}"')

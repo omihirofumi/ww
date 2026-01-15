@@ -83,18 +83,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const version = blk: {
-        var code: u8 = 0;
-        const out = b.runAllowFail(
-            &[_][]const u8{
-                "git",      "-C",     b.build_root.path orelse ".",
-                "describe", "--tags", "--abbrev=0",
-            },
-            &code,
-            .Ignore,
-        ) catch break :blk "unknown";
-        break :blk std.mem.trimRight(u8, out, "\r\n");
-    };
+    const version = b.option([]const u8, "version", "Version string for ww (e.g. v1.2.3)") orelse "unknown";
 
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "version", version);
