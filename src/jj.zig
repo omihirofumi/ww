@@ -4,6 +4,10 @@ const protobuf = @import("protobuf/decode.zig");
 const checkout_path = ".jj/working_copy/checkout";
 const repo_path = ".jj/repo";
 
+pub const Error = error{ NoStdout, JjRootFailed, RunJjWorkspaceAddFailed,
+    // // The current workspace cannot be forgotten.
+    CannotForgetCurrentDefault, ForgetWorkspaceFailed, Unknown };
+
 pub fn buildWorkspacePath(allocator: std.mem.Allocator, repo_root: []const u8, name: []const u8) ![]const u8 {
     return std.mem.concat(allocator, u8, &[_][]const u8{
         repo_root,
@@ -146,6 +150,40 @@ pub fn defaultWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
     defer file.close();
 
     return try decodeWorkspaceName(allocator, file);
+}
+
+pub fn forgetWorkspace(allocator: std.mem.Allocator, workspace_name: ?[]const u8) Error!void {
+    const forget_workspace: []const u8 = value: {
+        if (workspace_name == null) {
+            const is_currrent_default = isCurrentdefault(allocator) catch |err| switch (err) {
+                else => {
+                    return Error.Unknown;
+                },
+            };
+            if (is_currrent_default) {
+                return Error.CannotForgetCurrentDefault;
+            }
+
+            if (currentWorkspaceName(allocator)) |current_workspace_name| {
+                break :value current_workspace_name;
+            } else |err| switch (err) {
+                else => Error.Unknown,
+            }
+        }
+        break :value workspace_name;
+    };
+
+    var child = std.process.Child.init(&.{ "jj", "workspace", "forget", forget_workspace }, allocator);
+    child.stdin_behavior = .Inherit;
+    child.stdout_behavior = .Inherit;
+    child.stderr_behavior = .Inherit;
+
+    try child.spawn();
+    const term = try child.wait();
+    switch (term) {
+        .Exited => |code| if (code != 0) return Error.ForgetWorkspaceFailed,
+        else => return Error.ForgetWorkspaceFailed,
+    }
 }
 
 fn isCurrentdefault(allocator: std.mem.Allocator) !bool {

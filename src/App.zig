@@ -8,6 +8,7 @@ const cmd_init = @import("commands/init.zig");
 const cmd_list = @import("commands/list.zig");
 const cmd_new = @import("commands/new.zig");
 const cmd_defalt = @import("commands/go_default.zig");
+const cmd_forget = @import("commands/forget.zig");
 
 var error_buf: [1024]u8 = undefined;
 var stderr_writer = std.fs.File.stderr().writer(&error_buf);
@@ -22,6 +23,7 @@ const Command = union(enum) {
     list: cmd_list.Parsed,
     // go to default workspaec
     default: void,
+    forget: cmd_forget.Parsed,
 };
 
 allocator: std.mem.Allocator,
@@ -61,6 +63,11 @@ pub fn parse(self: *App, it: *std.process.ArgIterator) !Command {
     if (std.mem.eql(u8, subcommand, "default")) {
         return .{ .default = {} };
     }
+
+    if (std.mem.eql(u8, subcommand, "forget")) {
+        return .{ .forget = try cmd_forget.parse(it) };
+    }
+
     return error.UnrecognizedSubcommand;
 }
 
@@ -87,5 +94,6 @@ pub fn run(self: App, cmd: Command) !void {
         .completion => |parsed| try cmd_completion.run(parsed),
         .list => |parsed| try cmd_list.run(self.allocator, parsed),
         .default => try cmd_defalt.run(self.allocator),
+        .forget => |parsed| try cmd_forget.run(self.allocator, parsed),
     }
 }
