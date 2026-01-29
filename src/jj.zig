@@ -115,6 +115,102 @@ pub fn runJjWorkspaceAdd(allocator: std.mem.Allocator, path: []const u8, revisio
     }
 }
 
+/// Run a hook if it exists.
+/// Hook location: <repo_root>/.jj/hooks/<hook_name>
+/// Environment variables set: WW_WORKSPACE_NAME, WW_WORKSPACE_PATH
+/// On failure, prints a warning but does not fail.
+fn runHook(
+    allocator: std.mem.Allocator,
+    repo_root: []const u8,
+    hook_name: []const u8,
+    workspace_path: []const u8,
+    workspace_name: []const u8,
+) void {
+    const hook_path = std.fs.path.join(allocator, &.{ repo_root, ".jj", "hooks", hook_name }) catch return;
+    defer allocator.free(hook_path);
+
+    // Check if hook exists
+    const hook_file = std.fs.openFileAbsolute(hook_path, .{ .mode = .read_only }) catch return;
+    hook_file.close();
+
+    // Run the hook with repo_root as working directory
+    var child = std.process.Child.init(&.{hook_path}, allocator);
+    child.stdin_behavior = .Inherit;
+    child.stdout_behavior = .Inherit;
+    child.stderr_behavior = .Inherit;
+
+    // Set working directory to repo root
+    child.cwd = repo_root;
+
+    // Set environment variables
+    var env_map = std.process.EnvMap.init(allocator);
+    defer env_map.deinit();
+
+    // Copy existing environment
+    if (std.process.getEnvMap(allocator)) |system_env| {
+        var it = system_env.iterator();
+        while (it.next()) |entry| {
+            env_map.put(entry.key_ptr.*, entry.value_ptr.*) catch {};
+        }
+        @constCast(&system_env).deinit();
+    } else |_| {}
+
+    // Add our variables
+    env_map.put("WW_WORKSPACE_NAME", workspace_name) catch {};
+    env_map.put("WW_WORKSPACE_PATH", workspace_path) catch {};
+
+    child.env_map = &env_map;
+
+    child.spawn() catch |err| {
+        printHookWarning(hook_name, "failed to run: {}", .{err});
+        return;
+    };
+
+    const term = child.wait() catch |err| {
+        printHookWarning(hook_name, "failed to wait: {}", .{err});
+        return;
+    };
+
+    switch (term) {
+        .Exited => |code| {
+            if (code != 0) {
+                printHookWarning(hook_name, "exited with code {d}", .{code});
+            }
+        },
+        else => {
+            printHookWarning(hook_name, "terminated abnormally", .{});
+        },
+    }
+}
+
+fn printHookWarning(hook_name: []const u8, comptime fmt: []const u8, args: anytype) void {
+    var out_buf: [1024]u8 = undefined;
+    var err_writer = std.fs.File.stderr().writer(&out_buf);
+    const stderr = &err_writer.interface;
+    stderr.print("warning: {s} hook " ++ fmt ++ "\n", .{hook_name} ++ args) catch {};
+    stderr.flush() catch {};
+}
+
+/// Run the post-workspace-add hook if it exists.
+pub fn runPostWorkspaceAddHook(
+    allocator: std.mem.Allocator,
+    repo_root: []const u8,
+    workspace_path: []const u8,
+    workspace_name: []const u8,
+) void {
+    runHook(allocator, repo_root, "post-workspace-add", workspace_path, workspace_name);
+}
+
+/// Run the post-workspace-forget hook if it exists.
+pub fn runPostWorkspaceForgetHook(
+    allocator: std.mem.Allocator,
+    repo_root: []const u8,
+    workspace_path: []const u8,
+    workspace_name: []const u8,
+) void {
+    runHook(allocator, repo_root, "post-workspace-forget", workspace_path, workspace_name);
+}
+
 pub fn listWorkspaces(allocator: std.mem.Allocator) ![]const []const u8 {
     var child = std.process.Child.init(&.{ "jj", "workspace", "list" }, allocator);
     child.stdin_behavior = .Inherit;
@@ -162,6 +258,11 @@ pub fn defaultWorkspaceName(allocator: std.mem.Allocator) ![]const u8 {
     defer file.close();
 
     return try decodeWorkspaceName(allocator, file);
+}
+
+/// Get the current workspace name (public wrapper)
+pub fn currentWorkspaceNamePublic(allocator: std.mem.Allocator) ![]const u8 {
+    return currentWorkspaceName(allocator);
 }
 
 pub fn forgetWorkspace(allocator: std.mem.Allocator, workspace_name: ?[]const u8) Error!void {

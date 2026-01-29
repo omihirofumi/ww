@@ -34,6 +34,9 @@ pub fn run(allocator: std.mem.Allocator, parsed: Parsed) !void {
         defer allocator.free(workspace_path);
 
         try jj.runJjWorkspaceAdd(allocator, workspace_path, parsed.options.revision, parsed.name);
+
+        // Run post-workspace-add hook if it exists
+        jj.runPostWorkspaceAddHook(allocator, default_root, workspace_path, parsed.name);
     }
 
     var out_buf: [1024]u8 = undefined;
