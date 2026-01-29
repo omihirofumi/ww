@@ -1,5 +1,6 @@
 const std = @import("std");
 const jj = @import("../jj.zig");
+const config = @import("../config.zig");
 const args = @import("args.zig");
 
 pub const Options = struct {
@@ -22,10 +23,14 @@ pub fn parse(it: *std.process.ArgIterator) !Parsed {
 pub fn run(allocator: std.mem.Allocator, parsed: Parsed) !void {
     const default_root = try jj.defaultRoot(allocator);
     defer allocator.free(default_root);
+
+    // Load config (global + per-repo)
+    const cfg = try config.Config.load(allocator, default_root);
+
     if (!(try existsWorkspace(allocator, parsed.name))) {
         if (!parsed.options.create) return error.WorkspaceNotFound;
 
-        const workspace_path = try jj.buildWorkspacePath(allocator, default_root, parsed.name);
+        const workspace_path = try jj.buildWorkspacePath(allocator, default_root, parsed.name, cfg.workspace_location);
         defer allocator.free(workspace_path);
 
         try jj.runJjWorkspaceAdd(allocator, workspace_path, parsed.options.revision, parsed.name);
@@ -45,7 +50,7 @@ pub fn run(allocator: std.mem.Allocator, parsed: Parsed) !void {
         return;
     }
 
-    const workspace_path = try jj.buildWorkspacePath(allocator, default_root, parsed.name);
+    const workspace_path = try jj.buildWorkspacePath(allocator, default_root, parsed.name, cfg.workspace_location);
     defer allocator.free(workspace_path);
 
     try stdout.print("cd {s}\n", .{workspace_path});

@@ -66,10 +66,39 @@ After that, `ww go <name>` will move your current directory.
 
 ## Workspace Location
 
-`ww` uses `jj root` and creates workspaces at:
+`ww` supports two workspace location strategies:
 
+| Strategy | Path Pattern | Description |
+|----------|--------------|-------------|
+| `sibling` (default) | `<repo>__<name>` | Workspace created as sibling directory |
+| `internal` | `<repo>/.workspaces/<name>` | Workspace created inside repo |
+
+## Configuration
+
+Configuration is loaded from two locations (per-repo overrides global):
+
+1. **Global**: `~/.config/ww/config.toml`
+2. **Per-repo**: `<repo>/.jj/ww.toml`
+
+### Config Format
+
+```toml
+# Choose workspace location strategy
+workspace_location = sibling  # or "internal"
 ```
-../<repo_name>__<name>
+
+### Examples
+
+**Global config** (`~/.config/ww/config.toml`):
+```toml
+# Default to internal workspaces for all repos
+workspace_location = internal
+```
+
+**Per-repo override** (`<repo>/.jj/ww.toml`):
+```toml
+# This specific repo uses sibling workspaces
+workspace_location = sibling
 ```
 
 ## Example
