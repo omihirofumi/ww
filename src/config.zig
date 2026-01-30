@@ -77,6 +77,11 @@ pub const Config = struct {
                 const key = std.mem.trim(u8, trimmed[0..eq_idx], " \t");
                 var value = std.mem.trim(u8, trimmed[eq_idx + 1 ..], " \t");
 
+                // Strip inline comments (# preceded by whitespace)
+                if (std.mem.indexOf(u8, value, " #")) |comment_idx| {
+                    value = std.mem.trim(u8, value[0..comment_idx], " \t");
+                }
+
                 // Remove quotes if present
                 if (value.len >= 2 and value[0] == '"' and value[value.len - 1] == '"') {
                     value = value[1 .. value.len - 1];
@@ -151,6 +156,20 @@ test "parseConfig ignores comments" {
 test "parseConfig defaults to sibling" {
     const content = "# only comments\n";
     const config = Config.parseConfig(content);
+    try std.testing.expectEqual(WorkspaceLocation.sibling, config.workspace_location);
+}
+
+test "parseConfig strips inline comments" {
+    const content = "workspace_location = internal # this is a comment\n";
+    const config = Config.parseConfig(content);
+    try std.testing.expectEqual(WorkspaceLocation.internal, config.workspace_location);
+}
+
+test "parseConfig preserves hash in value without preceding space" {
+    const content = "workspace_location = internal#notacomment\n";
+    const config = Config.parseConfig(content);
+    // This should fail to parse since "internal#notacomment" is not a valid enum value
+    // and should fall back to default
     try std.testing.expectEqual(WorkspaceLocation.sibling, config.workspace_location);
 }
 
