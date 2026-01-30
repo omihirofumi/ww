@@ -1,6 +1,11 @@
 const std = @import("std");
 const jj = @import("jj.zig");
 
+/// Errors that can occur during config parsing
+pub const ConfigError = error{
+    InvalidConfigValue,
+};
+
 /// Workspace location strategy
 pub const WorkspaceLocation = enum {
     /// <repo>__<name> - sibling to repo (default, backward compatible)
@@ -26,8 +31,11 @@ pub const Config = struct {
             defer allocator.free(global_path);
             if (loadFromFile(allocator, global_path)) |global_config| {
                 config = global_config;
-            } else |_| {
-                // Global config doesn't exist or is invalid, use defaults
+            } else |err| {
+                // Only ignore file not found - config file is optional
+                if (err != error.FileNotFound) {
+                    return err; // Propagate other errors (e.g., InvalidConfigValue)
+                }
             }
         } else |_| {
             // Couldn't determine global config path, use defaults
@@ -40,8 +48,11 @@ pub const Config = struct {
 
             if (loadFromFile(allocator, repo_config_path)) |repo_config| {
                 config = repo_config;
-            } else |_| {
-                // Per-repo config doesn't exist or is invalid, keep global/defaults
+            } else |err| {
+                // Only ignore file not found - config file is optional
+                if (err != error.FileNotFound) {
+                    return err; // Propagate other errors (e.g., InvalidConfigValue)
+                }
             }
         }
 
@@ -62,7 +73,7 @@ pub const Config = struct {
         return parseConfig(content);
     }
 
-    fn parseConfig(content: []const u8) Config {
+    fn parseConfig(content: []const u8) ConfigError!Config {
         var config = Config{};
 
         var lines = std.mem.splitScalar(u8, content, '\n');
@@ -90,6 +101,8 @@ pub const Config = struct {
                 if (std.mem.eql(u8, key, "workspace_location")) {
                     if (WorkspaceLocation.fromString(value)) |loc| {
                         config.workspace_location = loc;
+                    } else {
+                        return error.InvalidConfigValue;
                     }
                 }
             }
@@ -131,46 +144,51 @@ pub fn buildWorkspacePath(
 
 test "parseConfig with sibling location" {
     const content = "workspace_location = sibling\n";
-    const config = Config.parseConfig(content);
+    const config = try Config.parseConfig(content);
     try std.testing.expectEqual(WorkspaceLocation.sibling, config.workspace_location);
 }
 
 test "parseConfig with internal location" {
     const content = "workspace_location = internal\n";
-    const config = Config.parseConfig(content);
+    const config = try Config.parseConfig(content);
     try std.testing.expectEqual(WorkspaceLocation.internal, config.workspace_location);
 }
 
 test "parseConfig with quoted value" {
     const content = "workspace_location = \"internal\"\n";
-    const config = Config.parseConfig(content);
+    const config = try Config.parseConfig(content);
     try std.testing.expectEqual(WorkspaceLocation.internal, config.workspace_location);
 }
 
 test "parseConfig ignores comments" {
     const content = "# comment\nworkspace_location = internal\n";
-    const config = Config.parseConfig(content);
+    const config = try Config.parseConfig(content);
     try std.testing.expectEqual(WorkspaceLocation.internal, config.workspace_location);
 }
 
 test "parseConfig defaults to sibling" {
     const content = "# only comments\n";
-    const config = Config.parseConfig(content);
+    const config = try Config.parseConfig(content);
     try std.testing.expectEqual(WorkspaceLocation.sibling, config.workspace_location);
 }
 
 test "parseConfig strips inline comments" {
     const content = "workspace_location = internal # this is a comment\n";
-    const config = Config.parseConfig(content);
+    const config = try Config.parseConfig(content);
     try std.testing.expectEqual(WorkspaceLocation.internal, config.workspace_location);
 }
 
-test "parseConfig preserves hash in value without preceding space" {
+test "parseConfig rejects invalid workspace_location value" {
     const content = "workspace_location = internal#notacomment\n";
-    const config = Config.parseConfig(content);
+    const result = Config.parseConfig(content);
     // This should fail to parse since "internal#notacomment" is not a valid enum value
-    // and should fall back to default
-    try std.testing.expectEqual(WorkspaceLocation.sibling, config.workspace_location);
+    try std.testing.expectError(error.InvalidConfigValue, result);
+}
+
+test "parseConfig rejects unknown workspace_location" {
+    const content = "workspace_location = foobar\n";
+    const result = Config.parseConfig(content);
+    try std.testing.expectError(error.InvalidConfigValue, result);
 }
 
 test "buildWorkspacePath sibling" {
