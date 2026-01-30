@@ -34,6 +34,13 @@ pub fn run(parsed: Parsed) !void {
                 "GLOBAL OPTIONS:\n" ++
                 "  -h, --help  Show help\n" ++
                 "\n" ++
+                "CONFIGURATION:\n" ++
+                "  Global:    ~/.config/ww/config.toml\n" ++
+                "  Per-repo:  <repo>/.jj/ww.toml (overrides global)\n" ++
+                "\n" ++
+                "  workspace_location = sibling   # <repo>__<name> (default)\n" ++
+                "  workspace_location = internal  # <repo>/.workspaces/<name>\n" ++
+                "\n" ++
                 "Run 'ww help <command>' for details on a command.\n",
             .{},
         );
