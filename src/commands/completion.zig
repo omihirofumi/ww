@@ -22,6 +22,12 @@ pub fn run(parsed: Parsed) !void {
             try stdout.print(
                 "#compdef ww\n" ++
                     "\n" ++
+                    "_ww_workspaces() {{\n" ++
+                    "  local -a ws\n" ++
+                    "  ws=(${{(f)\"$(ww list 2>/dev/null | grep -v '^default$')\"}})\n" ++
+                    "  compadd -a ws\n" ++
+                    "}}\n" ++
+                    "\n" ++
                     "_ww() {{\n" ++
                     "  local -a subcmds\n" ++
                     "  subcmds=(\n" ++
@@ -31,43 +37,43 @@ pub fn run(parsed: Parsed) !void {
                     "    'default:Go to default workspace'\n" ++
                     "    'init:Print shell init'\n" ++
                     "    'completion:Print completion script'\n" ++
+                    "    'forget:Forget workspace'\n" ++
                     "    'help:Show help'\n" ++
                     "  )\n" ++
                     "\n" ++
                     "  _arguments -C \\\n" ++
                     "    '(--version)--version[show version]' \\\n" ++
                     "    '1:command:->cmds' \\\n" ++
-                    "    '2:arg:->args' && return 0\n" ++
+                    "    '*::arg:->args'\n" ++
                     "\n" ++
                     "  case $state in\n" ++
                     "    cmds)\n" ++
                     "      _describe -t commands 'ww command' subcmds\n" ++
                     "      ;;\n" ++
                     "    args)\n" ++
-                    "      case $words[2] in\n" ++
+                    "      case $words[1] in\n" ++
                     "        go)\n" ++
-                    "          _arguments -C \\\n" ++
+                    "          _arguments \\\n" ++
                     "            '(-r --revision)'{{-r,--revision}}'[revision]:revision:' \\\n" ++
                     "            '(-c --create)'{{-c,--create}}'[create if missing]' \\\n" ++
-                    "            '1:workspace name:->workspaces'\n" ++
+                    "            '1:workspace name:_ww_workspaces'\n" ++
                     "          ;;\n" ++
                     "        new)\n" ++
-                    "          _arguments -C \\\n" ++
+                    "          _arguments \\\n" ++
                     "            '(-r --revision)'{{-r,--revision}}'[revision]:revision:' \\\n" ++
                     "            '1:workspace name:'\n" ++
+                    "          ;;\n" ++
+                    "        forget)\n" ++
+                    "          _arguments \\\n" ++
+                    "            '1:workspace name:_ww_workspaces'\n" ++
                     "          ;;\n" ++
                     "        init|completion)\n" ++
                     "          compadd zsh\n" ++
                     "          ;;\n" ++
                     "        help)\n" ++
-                    "          compadd new go list default init completion help\n" ++
+                    "          compadd new go list default init completion forget help\n" ++
                     "          ;;\n" ++
                     "      esac\n" ++
-                    "      ;;\n" ++
-                    "    workspaces)\n" ++
-                    "      local -a ws\n" ++
-                    "      ws=(${{(f)\"$(ww list 2>/dev/null)\"}})\n" ++
-                    "      compadd -a ws\n" ++
                     "      ;;\n" ++
                     "  esac\n" ++
                     "}}\n" ++
