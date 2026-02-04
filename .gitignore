@@ -1,5 +1,12 @@
-.zig-cache/
+# Deny-by-default for dotfiles
+.*
+# Whitelist essentials
+!.gitignore
+!.github/
+# Global exception for .gitkeep
+!**/.gitkeep
+# zig artifacts
 zig-out/
 *.o
-
-.idea
+# nix artifacts
+result
