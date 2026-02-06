@@ -31,13 +31,11 @@ pub fn run(parsed: Parsed) !void {
                     "_ww() {{\n" ++
                     "  local -a subcmds\n" ++
                     "  subcmds=(\n" ++
-                    "    'new:Create workspace'\n" ++
                     "    'go:Go to workspace'\n" ++
-                    "    'list:List workspaces'\n" ++
-                    "    'default:Go to default workspace'\n" ++
-                    "    'init:Print shell init'\n" ++
-                    "    'completion:Print completion script'\n" ++
                     "    'forget:Forget workspace'\n" ++
+                    "    'new:Create workspace'\n" ++
+                    "    'default:Go to default workspace'\n" ++
+                    "    'list:List workspaces'\n" ++
                     "    'help:Show help'\n" ++
                     "  )\n" ++
                     "\n" ++
@@ -54,8 +52,10 @@ pub fn run(parsed: Parsed) !void {
                     "      case $words[1] in\n" ++
                     "        go)\n" ++
                     "          _arguments \\\n" ++
-                    "            '(-r --revision)'{{-r,--revision}}'[revision]:revision:' \\\n" ++
-                    "            '(-c --create)'{{-c,--create}}'[create if missing]' \\\n" ++
+                    "            '(-r --revision)-r[revision]:revision:' \\\n" ++
+                    "            '(-r --revision)--revision[revision]:revision:' \\\n" ++
+                    "            '(-c --create)-c[create if missing]' \\\n" ++
+                    "            '(-c --create)--create[create if missing]' \\\n" ++
                     "            '1:workspace name:_ww_workspaces'\n" ++
                     "          ;;\n" ++
                     "        new)\n" ++
@@ -67,11 +67,8 @@ pub fn run(parsed: Parsed) !void {
                     "          _arguments \\\n" ++
                     "            '1:workspace name:_ww_workspaces'\n" ++
                     "          ;;\n" ++
-                    "        init|completion)\n" ++
-                    "          compadd zsh\n" ++
-                    "          ;;\n" ++
                     "        help)\n" ++
-                    "          compadd new go list default init completion forget help\n" ++
+                    "          compadd go forget new default list help\n" ++
                     "          ;;\n" ++
                     "      esac\n" ++
                     "      ;;\n" ++
