@@ -101,6 +101,64 @@ workspace_location = internal
 workspace_location = sibling
 ```
 
+## Hooks
+
+`ww` supports optional hooks that run after workspace operations.
+
+| Hook | Location | Trigger |
+|------|----------|---------|
+| `post-workspace-add` | `<repo>/.jj/hooks/post-workspace-add` | After `ww new` or `ww go -c` |
+| `post-workspace-forget` | `<repo>/.jj/hooks/post-workspace-forget` | After `ww forget` |
+
+### Hook Environment
+
+All hooks run with:
+
+- **Working directory**: Repository root
+- **Environment variables**:
+  - `WW_WORKSPACE_NAME`: Name of the workspace
+  - `WW_WORKSPACE_PATH`: Path to the workspace
+
+If a hook fails (non-zero exit), a warning is printed but the command still succeeds.
+
+### Example: post-workspace-add
+
+```sh
+#!/bin/sh
+# .jj/hooks/post-workspace-add
+# Copy local config files to new workspace
+
+# Copy .env file if it exists
+if [ -f ".env" ]; then
+    cp .env "$WW_WORKSPACE_PATH/"
+fi
+
+# Copy local settings
+if [ -f ".vscode/settings.local.json" ]; then
+    mkdir -p "$WW_WORKSPACE_PATH/.vscode"
+    cp .vscode/settings.local.json "$WW_WORKSPACE_PATH/.vscode/"
+fi
+```
+
+### Example: post-workspace-forget
+
+```sh
+#!/bin/sh
+# .jj/hooks/post-workspace-forget
+# Clean up workspace directory after forgetting
+
+if [ -d "$WW_WORKSPACE_PATH" ]; then
+    echo "Removing workspace directory: $WW_WORKSPACE_PATH"
+    rm -rf "$WW_WORKSPACE_PATH"
+fi
+```
+
+Make sure hooks are executable:
+```sh
+chmod +x .jj/hooks/post-workspace-add
+chmod +x .jj/hooks/post-workspace-forget
+```
+
 ## Example
 
 ```sh
